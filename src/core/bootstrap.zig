@@ -5,7 +5,6 @@ const std = @import("std");
 /// =======================
 pub const Host = struct {
     allocator: std.mem.Allocator,
-    args: []const []const u8 = &[_][]const u8{},
 
     threading: ?Threading = null,
     io: IO,
@@ -13,6 +12,7 @@ pub const Host = struct {
     net: ?Networking = null,
     time: ?Time = null,
     memory: ?Memory = null,
+    library: ?Library = null,
 };
 
 /// =======================
@@ -102,6 +102,27 @@ pub const Filesystem = struct {
         handle: FileHandle,
     ) void,
 
+    getSize: *const fn (
+        ctx: *anyopaque,
+        handle: FileHandle,
+    ) anyerror!u64,
+
+    seekTo: *const fn (
+        ctx: *anyopaque,
+        handle: FileHandle,
+        pos: u64,
+    ) anyerror!void,
+
+    makePath: *const fn (
+        ctx: *anyopaque,
+        path: []const u8,
+    ) anyerror!void,
+
+    deleteTree: *const fn (
+        ctx: *anyopaque,
+        path: []const u8,
+    ) anyerror!void,
+
     ctx: *anyopaque,
 };
 
@@ -185,4 +206,20 @@ pub const Memory = struct {
     protect: *const fn (ctx: *anyopaque, buffer: []u8, prot: MemoryProt) anyerror!void,
 
     ctx: *anyopaque,
+};
+
+/// =======================
+/// Dynamic Library (FFI)
+/// =======================
+pub const LibraryHandle = usize;
+
+pub const Library = struct {
+    open: *const fn (ctx: *anyopaque, path: []const u8) anyerror!LibraryHandle,
+    close: *const fn (ctx: *anyopaque, handle: LibraryHandle) void,
+    lookup: *const fn (ctx: *anyopaque, handle: LibraryHandle, symbol: []const u8) anyerror!usize,
+    call: *const fn (ctx: *anyopaque, address: usize, args: [*]const u64, type_mask: u64, count: usize, vm_memory: [*]u8, vm_memory_size: usize) u64,
+
+    ctx: *anyopaque,
+    library_paths: []const []const u8, // Host-provided library search paths
+    library_extensions: []const []const u8, // Host-provided library extensions (.so, .dll, etc.)
 };

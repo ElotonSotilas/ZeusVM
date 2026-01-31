@@ -195,6 +195,17 @@ All atomic operations require **8-byte alignment**.
 | `FCONV_I2F Rd, Rs1` | 0xA0 | Convert integer `Rs1` to float `Rd`. |
 | `FCONV_F2I Rd, Rs1` | 0xA1 | Convert float `Rs1` to integer `Rd`. |
 
+### 12. Dynamic Library (DL / FFI)
+| Mnemonic | Opcode | Description |
+| :--- | :--- | :--- |
+| `DL_OPEN Rd, Rs1` | 0xB0 | Open library at path `Rs1` (null-terminated string), handle in `Rd`. |
+| `DL_SYM Rd, Rs1, Rs2` | 0xB1 | Lookup symbol `Rs2` (string) in handle `Rs1`, address in `Rd`. |
+| `DL_CALL Rd, Rs1, Rs2` | 0xB2 | Call FFI function at `Rs1` with `ArgBlock` at `Rs2`, result in `Rd`. |
+| `DL_CLOSE Rs1` | 0xB3 | Close library handle `Rs1`. |
+
+**ArgBlock Encoding**: `[count:64][type_mask:64][arg0:64][arg1:64]...` (Big-Endian).
+`type_mask`: 2 bits per arg (00=u64, 01=f64, 10=ptr).
+
 ---
 
 ## Deployment & Archives (`.zar`)

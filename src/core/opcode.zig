@@ -100,4 +100,9 @@ pub const Opcode = enum(u8) {
 
     FCONV_I2F = 0xA0,
     FCONV_F2I,
+
+    DL_OPEN = 0xB0,
+    DL_SYM,
+    DL_CALL,
+    DL_CLOSE,
 };

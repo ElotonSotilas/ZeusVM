@@ -365,6 +365,9 @@ pub const Assembler = struct {
             .ATOMIC_RMW => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .ATOMIC_CAS => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .FCONV_I2F, .FCONV_F2I => .{ .regs = &.{ .rd, .rs1 } },
+            .DL_OPEN => .{ .regs = &.{ .rd, .rs1 } },
+            .DL_SYM, .DL_CALL => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+            .DL_CLOSE => .{ .regs = &.{.rs1} },
             else => .{ .regs = &.{ .rd, .rs1, .rs2 } },
         };
     }

@@ -249,5 +249,13 @@ pub fn init(host: ZeusVM.bootstrap.Host, memory: []u8) VM {
     vm.dispatch[@intFromEnum(Opcode.FCONV_I2F)] = s10.fconv_i2f;
     vm.dispatch[@intFromEnum(Opcode.FCONV_F2I)] = s10.fconv_f2i;
 
+    //=============================
+    // Dynamic Library (FFI)
+    //=============================
+    vm.dispatch[@intFromEnum(Opcode.DL_OPEN)] = s7.dl_open;
+    vm.dispatch[@intFromEnum(Opcode.DL_SYM)] = s7.dl_sym;
+    vm.dispatch[@intFromEnum(Opcode.DL_CALL)] = s7.dl_call;
+    vm.dispatch[@intFromEnum(Opcode.DL_CLOSE)] = s7.dl_close;
+
     return vm;
 }
