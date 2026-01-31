@@ -52,11 +52,11 @@ pub fn fsOpen(ctx: *anyopaque, path: []const u8, flags: bootstrap.OpenFlags) !bo
 
     if (flags.create) {
         // Use createFile
-        const file = try fs.root.createFile(path, .{ .truncate = flags.truncate, .read = flags.read });
-        const handle = fs.next;
+        const handle = try fs.root.createFile(path, .{ .truncate = flags.truncate, .read = flags.read });
+        const h_val = fs.next;
         fs.next += 1;
-        try fs.table.put(handle, file);
-        return handle;
+        try fs.table.put(h_val, handle);
+        return h_val;
     } else {
 
         // Use openFile
@@ -502,11 +502,6 @@ pub fn libClose(ctx: *anyopaque, handle: bootstrap.LibraryHandle) void {
 pub fn libLookup(ctx: *anyopaque, handle: bootstrap.LibraryHandle, symbol: []const u8) !usize {
     const self: *LibraryCtx = @ptrCast(@alignCast(ctx));
     const lib = self.libs.getPtr(handle) orelse return error.InvalidHandle;
-    // We need to null-terminate the symbol as DynLib expects 0-terminated c-string usually or a slice, but let's be safe.
-    // Actually std.DynLib.lookup takes a slice.
-
-    // However, if the symbol is not found, it returns null.
-    // Address 0 is typically invalid for a function, so we can check on that too if needed, but the option type handles it.
     // Create null-terminated copy for std.DynLib.lookup
     const symbol_z = try self.allocator.dupeZ(u8, symbol);
     defer self.allocator.free(symbol_z);

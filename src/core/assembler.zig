@@ -351,12 +351,47 @@ pub const Assembler = struct {
             .ICMP_EQ, .ICMP_NE, .ICMP_LT, .ICMP_GT, .ICMP_LE, .ICMP_GE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .FCMP_EQ, .FCMP_NE, .FCMP_LT, .FCMP_GT, .FCMP_LE, .FCMP_GE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .V128_F64x2_ADD, .V128_F64x2_SUB, .V128_F64x2_MUL, .V128_F64x2_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .V128_F64x2_SQRT, .V128_SPLAT_F64 => .{ .regs = &.{ .rd, .rs1 } },
-            .V128_LOAD, .V128_STORE => .{ .regs = &.{ .rd, .rs1 } },
+            .V512_STORE, .V2048_STORE => .{ .regs = &.{ .rs1, .rd } }, // addr in rs1, value in rd
+            .V512_ADD,
+            .V512_SUB,
+            .V512_MUL,
+            .V512_AND,
+            .V512_OR,
+            .V512_XOR,
+            .V512_SHUFFLE,
+            .V512_F64x8_ADD,
+            .V512_F64x8_SUB,
+            .V512_F64x8_MUL,
+            .V512_F64x8_DIV,
+            .V2048_ADD,
+            .V2048_SUB,
+            .V2048_MUL,
+            .V2048_AND,
+            .V2048_OR,
+            .V2048_XOR,
+            .V2048_SHUFFLE,
+            .V2048_F64x32_ADD,
+            .V2048_F64x32_SUB,
+            .V2048_F64x32_MUL,
+            .V2048_F64x32_DIV,
+            => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+            .V128_LOAD,
+            .V128_STORE,
+            .V128_SPLAT_F64,
+            .V128_F64x2_SQRT,
+            .V512_LOAD,
+            .V2048_LOAD,
+            .V512_F64x8_SQRT,
+            .V512_SPLAT_F64,
+            .V2048_F64x32_SQRT,
+            .V2048_SPLAT_F64,
+            => .{ .regs = &.{ .rd, .rs1 } },
             .SLEEP_NS, .THREAD_SPAWN, .THREAD_JOIN => .{ .regs = &.{.rd} },
             .FS_OPEN => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .FS_READ, .FS_WRITE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .FS_CLOSE, .LOAD_MODULE => .{ .regs = &.{.rs1} },
+            .FS_CLOSE, .FS_MKDIR, .FS_REMOVE, .LOAD_MODULE => .{ .regs = &.{.rs1} },
+            .FS_SIZE => .{ .regs = &.{ .rd, .rs1 } },
+            .FS_SEEK => .{ .regs = &.{ .rs1, .rs2 } },
             .STDIN_READ => .{ .regs = &.{ .rd, .rs1 } },
             .STDOUT_WRITE, .STDERR_WRITE => .{ .regs = &.{.rs1} },
             .NET_OPEN, .NET_CLOSE, .NET_SEND, .NET_RECV, .NET_POLL, .NET_LISTEN, .NET_ACCEPT => .{ .regs = &.{ .rd, .rs1, .rs2 } },
@@ -432,7 +467,10 @@ pub const Assembler = struct {
 
     fn parseRegister(self: *const Assembler, text: []const u8) !u8 {
         _ = self;
-        // R0, r0, R123, etc.
+        // R0, r0, R123 (Scalar)
+        // V0, v123 (128-bit Vector)
+        // Z0, z123 (512-bit Vector)
+        // X0, x123 (2048-bit Vector)
         return try std.fmt.parseInt(u8, text[1..], 10);
     }
 

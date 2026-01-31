@@ -121,36 +121,52 @@ All instructions are encoded as 64-bit Big-Endian words: `[Opcode:8][Rd:8][Rs1:8
 | `THREAD_JOIN Rs1` | 0x43 | Join thread handle `Rs1`. |
 | `THREAD_YIELD` | 0x44 | Yield current thread execution. |
 
-### 6. Filesystem & Modules
+### 6. Filesystem
 | Mnemonic | Opcode | Description |
 | :--- | :--- | :--- |
 | `FS_OPEN Rd, Rs1, Rs2` | 0x48 | Open file at path `Rs1`, flags `Rs2`, handle in `Rd`. |
 | `FS_READ Rd, Rs1, Rs2` | 0x49 | Read `Rs2` bytes from handle `Rs1` into buffer `Rd`. |
 | `FS_WRITE Rd, Rs1, Rs2`| 0x4A | Write `Rs2` bytes to handle `Rs1` from buffer `Rd`. |
 | `FS_CLOSE Rs1` | 0x4B | Close file handle `Rs1`. |
-| `LOAD_MODULE Rs1` | 0x4C | Load a dynamic `.zeus` module from path `Rs1`. |
+| `FS_SIZE Rd, Rs1` | 0x4C | Get size of file handle `Rs1` into `Rd`. |
+| `FS_SEEK Rs1, Rs2` | 0x4D | Seek file handle `Rs1` to absolute position `Rs2`. |
+| `FS_MKDIR Rs1` | 0x4E | Create directory (and parents) at path `Rs1`. |
+| `FS_REMOVE Rs1` | 0x4F | Recursively delete file/directory at path `Rs1`. |
 
-### 7. Standard I/O
+### 7. Modules & Standard I/O
 | Mnemonic | Opcode | Description |
 | :--- | :--- | :--- |
-| `STDIN_READ Rd, Rs1, Imm` | 0x4D | Read up to `Imm` bytes from STDIN into buffer `Rs1`, count in `Rd`. |
-| `STDOUT_WRITE Rs1, Imm` | 0x4E | Write `Imm` bytes from buffer `Rs1` to STDOUT. |
-| `STDERR_WRITE Rs1, Imm` | 0x4F | Write `Imm` bytes from buffer `Rs1` to STDERR. |
+| `LOAD_MODULE Rs1` | 0x50 | Load a dynamic `.zeus` module from path `Rs1`. |
+| `STDIN_READ Rd, Rs1, Imm` | 0x51 | Read up to `Imm` bytes from STDIN into buffer `Rs1`, count in `Rd`. |
+| `STDOUT_WRITE Rs1, Imm` | 0x52 | Write `Imm` bytes from buffer `Rs1` to STDOUT. |
+| `STDERR_WRITE Rs1, Imm` | 0x53 | Write `Imm` bytes from buffer `Rs1` to STDERR. |
 
 ### 8. Networking
 | Mnemonic | Opcode | Description |
 | :--- | :--- | :--- |
-| `NET_OPEN Rd, Rs1, Rs2` | 0x50 | Connect to IP `Rs1`, port `Rs2`, handle in `Rd`. |
-| `NET_CLOSE Rs1` | 0x51 | Close network handle `Rs1`. |
-| `NET_SEND Rd, Rs1, Rs2` | 0x52 | Send `Rs2` bytes from buffer `Rd` via handle `Rs1`. |
-| `NET_RECV Rd, Rs1, Rs2` | 0x53 | Receive `Rs2` bytes into buffer `Rd` from handle `Rs1`. |
-| `NET_POLL Rd, Rs1, Rs2` | 0x54 | Poll handle `Rs1` for events mask `Rs2`. |
-| `NET_LISTEN Rd, Rs1, Rs2`| 0x55 | Bind and listen on port `Rs2` (IP `Rs1`), handle in `Rd`. |
-| `NET_ACCEPT Rd, Rs1` | 0x56 | Accept connection from listener `Rs1`, client handle in `Rd`. |
+| `NET_OPEN Rd, Rs1, Rs2` | 0x54 | Connect to IP `Rs1`, port `Rs2`, handle in `Rd`. |
+| `NET_CLOSE Rs1` | 0x55 | Close network handle `Rs1`. |
+| `NET_SEND Rd, Rs1, Rs2` | 0x56 | Send `Rs2` bytes from buffer `Rd` via handle `Rs1`. |
+| `NET_RECV Rd, Rs1, Rs2` | 0x57 | Receive `Rs2` bytes into buffer `Rd` from handle `Rs1`. |
+| `NET_POLL Rd, Rs1, Rs2` | 0x58 | Poll handle `Rs1` for events mask `Rs2`. |
+| `NET_LISTEN Rd, Rs1, Rs2`| 0x59 | Bind and listen on port `Rs2` (IP `Rs1`), handle in `Rd`. |
+| `NET_ACCEPT Rd, Rs1` | 0x5A | Accept connection from listener `Rs1`, client handle in `Rd`. |
 
-### 9. SIMD (V128 - Vector Operations)
+### 9. Vectors
+
+ZeusVM supports SIMD (Single Instruction, Multiple Data) operations across three vector widths.
+
+#### Register Prefixes
+- `Vn`: 128-bit (16-byte) vector register.
+- `Zn`: 512-bit (64-byte) vector register.
+- `Xn`: 2048-bit (256-byte) vector register.
+
+> [!NOTE]
+> There are 256 registers available for each width. Indexing `V0`, `Z0`, and `X0` refers to the same register index in their respective width banks.
+
+#### 128-bit (V128)
 | Mnemonic | Opcode | Description |
-| :--- | :--- | :--- |
+| --- | --- | --- |
 | `V128_LOAD Vd, Rs1` | 0x60 | Load 16 bytes from `mem[Rs1]` into `Vd`. |
 | `V128_STORE Vd, Rs1` | 0x61 | Store 16 bytes from `Vd` into `mem[Rs1]`. |
 | `V128_ADD Vd, Va, Vb` | 0x62 | Parallel 8-bit integer addition. |
@@ -166,6 +182,44 @@ All instructions are encoded as 64-bit Big-Endian words: `[Opcode:8][Rd:8][Rs1:8
 | `V128_F64x2_DIV Vd, Va, Vb` | 0x6C | Parallel F64 division. |
 | `V128_F64x2_SQRT Vd, Va` | 0x6D | Parallel F64 square root. |
 | `V128_SPLAT_F64 Vd, Rs1` | 0x6E | Broadcast F64 from scalar `Rs1` to both lanes of `Vd`. |
+
+#### 512-bit (V512)
+| Mnemonic | Opcode | Description |
+| --- | --- | --- |
+| `V512_LOAD Zd, Rs1` | 0xC0 | Load 64 bytes from memory into `Zd`. |
+| `V512_STORE Zd, Rs1` | 0xC1 | Store 64 bytes from `Zd` into memory. |
+| `V512_ADD Zd, Za, Zb` | 0xC2 | Parallel 8-bit integer addition. |
+| `V512_SUB Zd, Za, Zb` | 0xC3 | Parallel 8-bit integer subtraction. |
+| `V512_MUL Zd, Za, Zb` | 0xC4 | Parallel 8-bit integer multiplication. |
+| `V512_AND Zd, Za, Zb` | 0xC5 | Bitwise AND. |
+| `V512_OR Zd, Za, Zb` | 0xC6 | Bitwise OR. |
+| `V512_XOR Zd, Za, Zb` | 0xC7 | Bitwise XOR. |
+| `V512_SHUFFLE Zd, Za, Zb`| 0xCE | Shuffle Zd based on Za and Zb (XOR placeholder). |
+| `V512_F64x8_ADD Zd, Za, Zb` | 0xC8 | Parallel F64 addition. |
+| `V512_F64x8_SUB Zd, Za, Zb` | 0xC9 | Parallel F64 subtraction. |
+| `V512_F64x8_MUL Zd, Za, Zb` | 0xCA | Parallel F64 multiplication. |
+| `V512_F64x8_DIV Zd, Za, Zb` | 0xCB | Parallel F64 division. |
+| `V512_F64x8_SQRT Zd, Za` | 0xCC | Parallel F64 square root. |
+| `V512_SPLAT_F64 Zd, Rs1` | 0xCD | Broadcast F64 from scalar `Rs1` to all 8 lanes of `Zd`. |
+
+#### 2048-bit (V2048)
+| Mnemonic | Opcode | Description |
+| --- | --- | --- |
+| `V2048_LOAD Xd, Rs1` | 0xE0 | Load 256 bytes from memory into `Xd`. |
+| `V2048_STORE Xd, Rs1` | 0xE1 | Store 256 bytes from `Xd` into memory. |
+| `V2048_ADD Xd, Xa, Xb` | 0xE2 | Parallel 8-bit integer addition. |
+| `V2048_SUB Xd, Xa, Xb` | 0xE3 | Parallel 8-bit integer subtraction. |
+| `V2048_MUL Xd, Xa, Xb` | 0xE4 | Parallel 8-bit integer multiplication. |
+| `V2048_AND Xd, Xa, Xb` | 0xE5 | Bitwise AND. |
+| `V2048_OR Xd, Xa, Xb` | 0xE6 | Bitwise OR. |
+| `V2048_XOR Xd, Xa, Xb` | 0xE7 | Bitwise XOR. |
+| `V2048_SHUFFLE Xd, Xa, Xb`| 0xEE | Shuffle Xd based on Xa and Xb (XOR placeholder). |
+| `V2048_F64x32_ADD Xd, Xa, Xb` | 0xE8 | Parallel F64 addition. |
+| `V2048_F64x32_SUB Xd, Xa, Xb` | 0xE9 | Parallel F64 subtraction. |
+| `V2048_F64x32_MUL Xd, Xa, Xb` | 0xEA | Parallel F64 multiplication. |
+| `V2048_F64x32_DIV Xd, Xa, Xb` | 0xEB | Parallel F64 division. |
+| `V2048_F64x32_SQRT Xd, Xa` | 0xEC | Parallel F64 square root. |
+| `V2048_SPLAT_F64 Xd, Rs1` | 0xED | Broadcast F64 from scalar `Rs1` to all 32 lanes of `Xd`. |
 
 ### 10. Atomic Operations (SEQ_CST)
 All atomic operations require **8-byte alignment**.

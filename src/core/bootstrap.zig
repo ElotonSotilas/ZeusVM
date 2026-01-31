@@ -71,11 +71,12 @@ pub const IO = struct {
 /// =======================
 pub const FileHandle = usize;
 
-pub const OpenFlags = struct {
+pub const OpenFlags = packed struct(u64) {
     read: bool = false,
     write: bool = false,
     create: bool = false,
     truncate: bool = false,
+    _reserved: u60 = 0,
 };
 
 pub const Filesystem = struct {

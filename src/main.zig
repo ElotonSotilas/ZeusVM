@@ -30,6 +30,7 @@ pub fn main() void {
 
     realMain(allocator) catch |err| {
         if (err == error.UsageHelp) return;
+        std.debug.print("\n\x1b[1;31merror\x1b[0;1m: \x1b[0m{s}\n", .{@errorName(err)});
         std.process.exit(1);
     };
 }

@@ -33,26 +33,22 @@ fn slice_bytes(vm: *VM, addr: u64, len: usize) []u8 {
 pub fn fs_open(vm: *VM, inst: u64) !void {
     const rd_idx = rd(inst);
     const path_ptr_idx = rs1(inst);
-    const len: usize = @intCast(imm32(inst));
-    // Flags are encoded in rs2: 0=read, 1=write, 2=create+write, etc?
-    // Let's assume flags are passed in rs2 as a bitmask or similar.
-    // Actually, let's keep it simple: rs2 contains flags directly.
+    const flags_idx = rs2(inst);
+
     const path_addr = vm.regs[path_ptr_idx];
-    const path = slice_bytes(vm, path_addr, len);
+    const flags_val = vm.regs[flags_idx];
 
-    const flags_val = rs2(inst);
+    // Read string (find NULL terminator)
+    const max_len = 1024;
+    const slice = slice_bytes(vm, path_addr, max_len);
+    const len = std.mem.indexOfScalar(u8, slice, 0) orelse max_len;
+    const path = slice[0..len];
 
-    var flags = ZeusVM.bootstrap.OpenFlags{};
-    if (flags_val & 1 != 0) flags.read = true;
-    if (flags_val & 2 != 0) flags.write = true;
-    if (flags_val & 4 != 0) flags.create = true;
-    if (flags_val & 8 != 0) flags.truncate = true;
+    const flags: ZeusVM.bootstrap.OpenFlags = @bitCast(flags_val);
 
-    const handle = vm.host.fs.?.open(vm.host.fs.?.ctx, path, flags) catch |err| {
-        if (err == error.WouldBlock) return error.NotReady;
-        return err;
-    };
-    vm.regs[rd_idx] = @intCast(handle);
+    if (vm.host.fs) |fs| {
+        vm.regs[rd_idx] = try fs.open(fs.ctx, path, flags);
+    } else return error.FilesystemSupportMissing;
 }
 
 pub fn fs_read(vm: *VM, inst: u64) !void {
@@ -89,10 +85,59 @@ pub fn fs_write(vm: *VM, inst: u64) !void {
 
 pub fn fs_close(vm: *VM, inst: u64) !void {
     const handle_idx = rs1(inst);
-    const handle: ZeusVM.bootstrap.FileHandle = @intCast(vm.regs[handle_idx]);
+    const handle = vm.regs[handle_idx];
+    if (vm.host.fs) |fs| {
+        fs.close(fs.ctx, handle);
+    } else return error.FilesystemSupportMissing;
+}
 
-    vm.host.fs.?.close(vm.host.fs.?.ctx, handle);
-    vm.regs[handle_idx] = 0;
+pub fn fs_size(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const handle_idx = rs1(inst);
+    const handle = vm.regs[handle_idx];
+    if (vm.host.fs) |fs| {
+        vm.regs[rd_idx] = try fs.getSize(fs.ctx, handle);
+    } else return error.FilesystemSupportMissing;
+}
+
+pub fn fs_seek(vm: *VM, inst: u64) !void {
+    const handle_idx = rs1(inst);
+    const pos_idx = rs2(inst);
+    const handle = vm.regs[handle_idx];
+    const pos = vm.regs[pos_idx];
+    if (vm.host.fs) |fs| {
+        try fs.seekTo(fs.ctx, handle, pos);
+    } else return error.FilesystemSupportMissing;
+}
+
+pub fn fs_mkdir(vm: *VM, inst: u64) !void {
+    const path_ptr_idx = rs1(inst);
+    const ptr = vm.regs[path_ptr_idx];
+
+    // Read string (find NULL terminator)
+    const max_len = 1024;
+    const slice = slice_bytes(vm, ptr, max_len);
+    const len = std.mem.indexOfScalar(u8, slice, 0) orelse max_len;
+    const path = slice[0..len];
+
+    if (vm.host.fs) |fs| {
+        try fs.makePath(fs.ctx, path);
+    } else return error.FilesystemSupportMissing;
+}
+
+pub fn fs_remove(vm: *VM, inst: u64) !void {
+    const path_ptr_idx = rs1(inst);
+    const ptr = vm.regs[path_ptr_idx];
+
+    // Read string (find NULL terminator)
+    const max_len = 1024;
+    const slice = slice_bytes(vm, ptr, max_len);
+    const len = std.mem.indexOfScalar(u8, slice, 0) orelse max_len;
+    const path = slice[0..len];
+
+    if (vm.host.fs) |fs| {
+        try fs.deleteTree(fs.ctx, path);
+    } else return error.FilesystemSupportMissing;
 }
 
 pub fn load_module(vm: *VM, inst: u64) !void {

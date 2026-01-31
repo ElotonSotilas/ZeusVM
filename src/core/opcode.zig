@@ -45,13 +45,17 @@ pub const Opcode = enum(u8) {
     FS_READ,
     FS_WRITE,
     FS_CLOSE,
-    LOAD_MODULE,
+    FS_SIZE,
+    FS_SEEK,
+    FS_MKDIR,
+    FS_REMOVE,
 
-    STDIN_READ = 0x4D,
+    LOAD_MODULE = 0x50,
+    STDIN_READ,
     STDOUT_WRITE,
     STDERR_WRITE,
 
-    NET_OPEN = 0x50,
+    NET_OPEN = 0x54,
     NET_CLOSE,
     NET_SEND,
     NET_RECV,
@@ -105,4 +109,42 @@ pub const Opcode = enum(u8) {
     DL_SYM,
     DL_CALL,
     DL_CLOSE,
+
+    //=============================
+    // 512-bit Vectors (64B)
+    //=============================
+    V512_LOAD = 0xC0,
+    V512_STORE,
+    V512_ADD,
+    V512_SUB,
+    V512_MUL,
+    V512_AND,
+    V512_OR,
+    V512_XOR,
+    V512_F64x8_ADD,
+    V512_F64x8_SUB,
+    V512_F64x8_MUL,
+    V512_F64x8_DIV,
+    V512_F64x8_SQRT,
+    V512_SPLAT_F64,
+    V512_SHUFFLE,
+
+    //=============================
+    // 2048-bit Vectors (256B)
+    //=============================
+    V2048_LOAD = 0xE0,
+    V2048_STORE,
+    V2048_ADD,
+    V2048_SUB,
+    V2048_MUL,
+    V2048_AND,
+    V2048_OR,
+    V2048_XOR,
+    V2048_F64x32_ADD,
+    V2048_F64x32_SUB,
+    V2048_F64x32_MUL,
+    V2048_F64x32_DIV,
+    V2048_F64x32_SQRT,
+    V2048_SPLAT_F64,
+    V2048_SHUFFLE,
 };

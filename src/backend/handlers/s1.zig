@@ -35,14 +35,14 @@ pub fn halt(vm: *VM, instruction: u64) !void {
 
 pub fn jmp(vm: *VM, instruction: u64) !void {
     const target = @as(usize, imm32(instruction));
-    vm.pc = target -% 8;
+    vm.pc = target;
 }
 
 pub fn br(vm: *VM, instruction: u64) !void {
     const rs = rs1(instruction);
     const target = @as(usize, imm32(instruction));
     if (vm.regs[rs] != 0) {
-        vm.pc = target -% 8;
+        vm.pc = target;
     }
 }
 
@@ -50,7 +50,7 @@ pub fn br_if(vm: *VM, instruction: u64) !void {
     const cond_reg = rs1(instruction);
     const target = @as(usize, imm32(instruction));
     if (vm.regs[cond_reg] != 0) {
-        vm.pc = target -% 8;
+        vm.pc = target;
     }
 }
 
@@ -59,7 +59,7 @@ pub fn call(vm: *VM, instruction: u64) !void {
     // push return address (next instruction)
     vm.stack[vm.sp] = @intCast(vm.pc + 8);
     vm.sp += 1;
-    vm.pc = target -% 8;
+    vm.pc = target;
 }
 
 pub fn call_reg(vm: *VM, instruction: u64) !void {
@@ -68,12 +68,12 @@ pub fn call_reg(vm: *VM, instruction: u64) !void {
     // push return address (next instruction)
     vm.stack[vm.sp] = @intCast(vm.pc + 8);
     vm.sp += 1;
-    vm.pc = target -% 8;
+    vm.pc = target;
 }
 
 pub fn ret(vm: *VM, instruction: u64) !void {
     _ = instruction;
     // pop return address
     vm.sp -= 1;
-    vm.pc = @as(usize, @intCast(vm.stack[vm.sp])) -% 8;
+    vm.pc = @as(usize, @intCast(vm.stack[vm.sp]));
 }
