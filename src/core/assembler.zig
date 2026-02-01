@@ -340,70 +340,64 @@ pub const Assembler = struct {
     fn getOpcodeSignature(self: *const Assembler, op: Opcode) OpcodeSignature {
         _ = self;
         return switch (op) {
+            // --- Control Flow & System ---
             .NOP, .HALT, .RET, .THREAD_YIELD => .{ .regs = &.{} },
-            .JMP, .BR, .CALL, .TIME_NOW, .HEAP_ALLOC => .{ .regs = &.{.rd} },
-            .BR_IF => .{ .regs = &.{.rs1} },
-            .CALL_REG => .{ .regs = &.{.rs1} },
+            .JMP, .BR, .CALL => .{ .regs = &.{.rd} },
+            .BR_IF, .CALL_REG => .{ .regs = &.{.rs1} },
+
+            // --- Integer Arithmetic & Logic ---
             .IADD, .ISUB, .IMUL, .IDIV, .IMOD, .IAND, .IOR, .IXOR, .ISHL, .ISHR => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+
+            // --- Floating Point ---
             .FADD, .FSUB, .FMUL, .FDIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .FNEG, .FABS, .FSQRT => .{ .regs = &.{ .rd, .rs1 } },
+            .FNEG, .FABS, .FSQRT, .FCONV_I2F, .FCONV_F2I => .{ .regs = &.{ .rd, .rs1 } },
+
+            // --- Memory & Pointers ---
             .LOAD, .STORE, .MEM_COPY, .MEM_ZERO, .PTR_ADD, .PTR_SUB => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+            .HEAP_ALLOC => .{ .regs = &.{.rd} },
+
+            // --- Comparisons ---
             .ICMP_EQ, .ICMP_NE, .ICMP_LT, .ICMP_GT, .ICMP_LE, .ICMP_GE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .FCMP_EQ, .FCMP_NE, .FCMP_LT, .FCMP_GT, .FCMP_LE, .FCMP_GE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .V128_F64x2_ADD, .V128_F64x2_SUB, .V128_F64x2_MUL, .V128_F64x2_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .V512_STORE, .V2048_STORE => .{ .regs = &.{ .rs1, .rd } }, // addr in rs1, value in rd
-            .V512_ADD,
-            .V512_SUB,
-            .V512_MUL,
-            .V512_AND,
-            .V512_OR,
-            .V512_XOR,
-            .V512_SHUFFLE,
-            .V512_F64x8_ADD,
-            .V512_F64x8_SUB,
-            .V512_F64x8_MUL,
-            .V512_F64x8_DIV,
-            .V2048_ADD,
-            .V2048_SUB,
-            .V2048_MUL,
-            .V2048_AND,
-            .V2048_OR,
-            .V2048_XOR,
-            .V2048_SHUFFLE,
-            .V2048_F64x32_ADD,
-            .V2048_F64x32_SUB,
-            .V2048_F64x32_MUL,
-            .V2048_F64x32_DIV,
-            => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .V128_LOAD,
-            .V128_STORE,
-            .V128_SPLAT_F64,
-            .V128_F64x2_SQRT,
-            .V512_LOAD,
-            .V2048_LOAD,
-            .V512_F64x8_SQRT,
-            .V512_SPLAT_F64,
-            .V2048_F64x32_SQRT,
-            .V2048_SPLAT_F64,
-            => .{ .regs = &.{ .rd, .rs1 } },
-            .SLEEP_NS, .THREAD_SPAWN, .THREAD_JOIN => .{ .regs = &.{.rd} },
-            .FS_OPEN => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .FS_READ, .FS_WRITE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .FS_CLOSE, .FS_MKDIR, .FS_REMOVE => .{ .regs = &.{.rs1} },
-            .LOAD_MODULE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .FS_SIZE => .{ .regs = &.{ .rd, .rs1 } },
-            .FS_SEEK => .{ .regs = &.{ .rs1, .rs2 } },
-            .STDIN_READ => .{ .regs = &.{ .rd, .rs1 } },
-            .STDOUT_WRITE, .STDERR_WRITE => .{ .regs = &.{.rs1} },
-            .NET_OPEN, .NET_CLOSE, .NET_SEND, .NET_RECV, .NET_POLL, .NET_LISTEN, .NET_ACCEPT => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+
+            // --- Concurrency & Time ---
+            .TIME_NOW, .SLEEP_NS, .THREAD_SPAWN, .THREAD_JOIN => .{ .regs = &.{.rd} },
+
+            // --- Atomics ---
             .ATOMIC_LOAD => .{ .regs = &.{ .rd, .rs1 } },
             .ATOMIC_STORE => .{ .regs = &.{ .rs1, .rs2 } },
-            .ATOMIC_RMW => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .ATOMIC_CAS => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-            .FCONV_I2F, .FCONV_F2I => .{ .regs = &.{ .rd, .rs1 } },
+            .ATOMIC_RMW, .ATOMIC_CAS => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+
+            // --- Vector Operations (V128) ---
+            .V128_LOAD, .V128_STORE, .V128_SPLAT_F64, .V128_F64x2_SQRT => .{ .regs = &.{ .rd, .rs1 } },
+            .V128_ADD, .V128_SUB, .V128_MUL, .V128_AND, .V128_OR, .V128_XOR, .V128_SHUFFLE, .V128_F64x2_ADD, .V128_F64x2_SUB, .V128_F64x2_MUL, .V128_F64x2_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+
+            // --- Vector Operations (V512) ---
+            .V512_LOAD, .V512_F64x8_SQRT, .V512_SPLAT_F64 => .{ .regs = &.{ .rd, .rs1 } },
+            .V512_STORE => .{ .regs = &.{ .rs1, .rd } },
+            .V512_ADD, .V512_SUB, .V512_MUL, .V512_AND, .V512_OR, .V512_XOR, .V512_SHUFFLE, .V512_F64x8_ADD, .V512_F64x8_SUB, .V512_F64x8_MUL, .V512_F64x8_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+
+            // --- Vector Operations (V2048) ---
+            .V2048_LOAD, .V2048_F64x32_SQRT, .V2048_SPLAT_F64 => .{ .regs = &.{ .rd, .rs1 } },
+            .V2048_STORE => .{ .regs = &.{ .rs1, .rd } },
+            .V2048_ADD, .V2048_SUB, .V2048_MUL, .V2048_AND, .V2048_OR, .V2048_XOR, .V2048_SHUFFLE, .V2048_F64x32_ADD, .V2048_F64x32_SUB, .V2048_F64x32_MUL, .V2048_F64x32_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+
+            // --- Filesystem & I/O ---
+            .FS_OPEN, .FS_READ, .FS_WRITE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+            .FS_CLOSE, .FS_MKDIR, .FS_REMOVE => .{ .regs = &.{.rs1} },
+            .FS_SIZE, .STDIN_READ => .{ .regs = &.{ .rd, .rs1 } },
+            .FS_SEEK => .{ .regs = &.{ .rs1, .rs2 } },
+            .STDOUT_WRITE, .STDERR_WRITE => .{ .regs = &.{.rs1} },
+
+            // --- Network ---
+            .NET_OPEN, .NET_CLOSE, .NET_SEND, .NET_RECV, .NET_POLL, .NET_LISTEN, .NET_ACCEPT => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+
+            // --- Dynamic Linking & Modules ---
+            .LOAD_MODULE => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .DL_OPEN => .{ .regs = &.{ .rd, .rs1 } },
             .DL_SYM, .DL_CALL => .{ .regs = &.{ .rd, .rs1, .rs2 } },
             .DL_CLOSE => .{ .regs = &.{.rs1} },
+
             else => .{ .regs = &.{ .rd, .rs1, .rs2 } },
         };
     }
