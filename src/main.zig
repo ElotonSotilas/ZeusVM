@@ -276,6 +276,7 @@ fn realMain(allocator: std.mem.Allocator) !void {
     }
 
     var vm = ZeusVM.vm.init(h, memory);
+    defer vm.deinit();
     if (use_jit) {
         vm.use_jit = true;
         vm.jit = try ZeusVM.vm.Jit.init(allocator, 1024 * 1024, h);

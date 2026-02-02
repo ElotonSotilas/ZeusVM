@@ -258,53 +258,12 @@ pub const Jit = struct {
                     try self.emit_setcc_rax(0x9F); // setg
                     try self.emit_mov_reg_rax(rd_idx);
                 },
-                .V128_LOAD => {
-                    try self.emit_mov_rax_reg(rs1_idx); // addr
-                    const mem_off = @offsetOf(VM, "memory");
-                    try self.emit_mov_rdx_mem_rdi(mem_off);
-                    const vreg_code = HostVReg.fromVm(rd_idx);
-                    if (vreg_code) |host| {
-                        const h = @intFromEnum(host);
-                        // movups xmmH, [rdx + rax]
-                        try self.emit(&.{ 0x0F, 0x10, 0x04 + (@as(u8, h) << 3), 0x02 });
-                    } else {
-                        try self.emit(&.{ 0x0F, 0x10, 0x04, 0x02 }); // movups xmm0, [rdx + rax]
-                        try self.emit_v128_write_to_vm(rd_idx, .xmm0);
-                    }
-                },
-                .V128_STORE => {
-                    try self.emit_mov_rax_reg(rs1_idx); // addr
-                    const mem_off = @offsetOf(VM, "memory");
-                    try self.emit_mov_rdx_mem_rdi(mem_off);
-                    const vreg_code = HostVReg.fromVm(rd_idx);
-                    if (vreg_code) |host| {
-                        const h = @intFromEnum(host);
-                        // movups [rdx + rax], xmmH
-                        try self.emit(&.{ 0x0F, 0x11, 0x04 + (@as(u8, h) << 3), 0x02 });
-                    } else {
-                        try self.emit_v128_load_to_host(rd_idx, .xmm0);
-                        try self.emit(&.{ 0x0F, 0x11, 0x04, 0x02 }); // movups [rdx + rax], xmm0
-                    }
-                },
-                .V128_F64x2_ADD => {
-                    try self.emit_v128_binary_op(0x58, rd_idx, rs1_idx, rs2_idx);
-                },
-                .V128_F64x2_SUB => {
-                    try self.emit_v128_binary_op(0x5C, rd_idx, rs1_idx, rs2_idx);
-                },
-                .V128_F64x2_MUL => {
-                    try self.emit_v128_binary_op(0x59, rd_idx, rs1_idx, rs2_idx);
-                },
-                .V128_F64x2_DIV => {
-                    try self.emit_v128_binary_op(0x5E, rd_idx, rs1_idx, rs2_idx);
-                },
-                .V128_F64x2_SQRT => {
-                    try self.emit_v128_unary_op(0x51, rd_idx, rs1_idx);
-                },
-                .V128_SPLAT_F64 => {
-                    try self.emit_movq_xmm_reg(.xmm4, rs1_idx);
-                    try self.emit(&.{ 0x0F, 0x16, 0xE4 }); // movlhps xmm4, xmm4
-                    try self.emit_v128_write_to_vm(rd_idx, .xmm4);
+                // --- Dynamic Vectors fall back to interpreter ---
+                .V_LOAD, .V_STORE, .V_ADD, .V_SUB, .V_MUL, .V_AND, .V_OR, .V_XOR, .V_FADD, .V_FSUB, .V_FMUL, .V_FDIV, .V_FSQRT, .V_SPLAT, .V_SHUFFLE => {
+                    if (pc == start_pc) return error.UnsupportedInstruction;
+                    try self.emit_update_pc(pc);
+                    try self.emit_full_epilogue();
+                    break;
                 },
                 .FSUB => {
                     try self.emit_movq_xmm0_reg(rs1_idx);

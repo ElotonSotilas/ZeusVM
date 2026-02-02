@@ -368,19 +368,10 @@ pub const Assembler = struct {
             .ATOMIC_STORE => .{ .regs = &.{ .rs1, .rs2 } },
             .ATOMIC_RMW, .ATOMIC_CAS => .{ .regs = &.{ .rd, .rs1, .rs2 } },
 
-            // --- Vector Operations (V128) ---
-            .V128_LOAD, .V128_STORE, .V128_SPLAT_F64, .V128_F64x2_SQRT => .{ .regs = &.{ .rd, .rs1 } },
-            .V128_ADD, .V128_SUB, .V128_MUL, .V128_AND, .V128_OR, .V128_XOR, .V128_SHUFFLE, .V128_F64x2_ADD, .V128_F64x2_SUB, .V128_F64x2_MUL, .V128_F64x2_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-
-            // --- Vector Operations (V512) ---
-            .V512_LOAD, .V512_F64x8_SQRT, .V512_SPLAT_F64 => .{ .regs = &.{ .rd, .rs1 } },
-            .V512_STORE => .{ .regs = &.{ .rs1, .rd } },
-            .V512_ADD, .V512_SUB, .V512_MUL, .V512_AND, .V512_OR, .V512_XOR, .V512_SHUFFLE, .V512_F64x8_ADD, .V512_F64x8_SUB, .V512_F64x8_MUL, .V512_F64x8_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
-
-            // --- Vector Operations (V2048) ---
-            .V2048_LOAD, .V2048_F64x32_SQRT, .V2048_SPLAT_F64 => .{ .regs = &.{ .rd, .rs1 } },
-            .V2048_STORE => .{ .regs = &.{ .rs1, .rd } },
-            .V2048_ADD, .V2048_SUB, .V2048_MUL, .V2048_AND, .V2048_OR, .V2048_XOR, .V2048_SHUFFLE, .V2048_F64x32_ADD, .V2048_F64x32_SUB, .V2048_F64x32_MUL, .V2048_F64x32_DIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
+            // --- Dynamic Vector Operations ---
+            .V_LOAD, .V_SPLAT, .V_FSQRT => .{ .regs = &.{ .rd, .rs1 } },
+            .V_STORE => .{ .regs = &.{ .rs1, .rd } },
+            .V_ADD, .V_SUB, .V_MUL, .V_AND, .V_OR, .V_XOR, .V_SHUFFLE, .V_FADD, .V_FSUB, .V_FMUL, .V_FDIV => .{ .regs = &.{ .rd, .rs1, .rs2 } },
 
             // --- Filesystem & I/O ---
             .FS_OPEN, .FS_READ, .FS_WRITE => .{ .regs = &.{ .rd, .rs1, .rs2 } },

@@ -13,7 +13,6 @@ const s7 = @import("handlers/s7.zig");
 const s8 = @import("handlers/s8.zig");
 const s9 = @import("handlers/s9.zig");
 const s10 = @import("handlers/s10.zig");
-const s11 = @import("handlers/s11.zig");
 
 pub const Handler = *const fn (vm: *VM, inst: u64) anyerror!void;
 
@@ -24,9 +23,8 @@ pub const VMError = enum {
 
 pub const VM = struct {
     regs: [256]u64,
-    vregs: [256]@Vector(16, u8),
-    v512regs: [256]@Vector(64, u8),
-    v2048regs: [256]@Vector(256, u8),
+    vregs: [256][]u8,
+    vreg_caps: [256]u32,
     pc: usize,
     memory: []u8,
     stack: [1024]u64,
@@ -46,6 +44,13 @@ pub const VM = struct {
 
     /// Helper for dynamic loading
     next_free_addr: usize = 0,
+
+    pub fn deinit(self: *VM) void {
+        for (self.vregs) |v| {
+            if (v.len > 0) self.host.allocator.free(v);
+        }
+        self.tasks.deinit(self.host.allocator);
+    }
 
     pub fn runAsync(self: *VM) !void {
         self.running = true;
@@ -112,9 +117,8 @@ pub const VM = struct {
 pub fn init(host: ZeusVM.bootstrap.Host, memory: []u8) VM {
     var vm = VM{
         .regs = [_]u64{0} ** 256,
-        .vregs = [_]@Vector(16, u8){@splat(0)} ** 256,
-        .v512regs = [_]@Vector(64, u8){@splat(0)} ** 256,
-        .v2048regs = [_]@Vector(256, u8){@splat(0)} ** 256,
+        .vregs = [_][]u8{""} ** 256,
+        .vreg_caps = [_]u32{0} ** 256,
         .pc = 0,
         .memory = memory,
         .stack = undefined,
@@ -211,23 +215,24 @@ pub fn init(host: ZeusVM.bootstrap.Host, memory: []u8) VM {
     vm.dispatch[@intFromEnum(Opcode.NET_ACCEPT)] = s6.net_accept;
 
     //=============================
-    // SIMD / v128
+    // Dynamic Vectors
     //=============================
-    vm.dispatch[@intFromEnum(Opcode.V128_LOAD)] = s7.v128_load;
-    vm.dispatch[@intFromEnum(Opcode.V128_STORE)] = s7.v128_store;
-    vm.dispatch[@intFromEnum(Opcode.V128_ADD)] = s7.v128_add;
-    vm.dispatch[@intFromEnum(Opcode.V128_SUB)] = s7.v128_sub;
-    vm.dispatch[@intFromEnum(Opcode.V128_MUL)] = s7.v128_mul;
-    vm.dispatch[@intFromEnum(Opcode.V128_AND)] = s7.v128_and;
-    vm.dispatch[@intFromEnum(Opcode.V128_OR)] = s7.v128_or;
-    vm.dispatch[@intFromEnum(Opcode.V128_XOR)] = s7.v128_xor;
-    vm.dispatch[@intFromEnum(Opcode.V128_SHUFFLE)] = s7.v128_shuffle;
-    vm.dispatch[@intFromEnum(Opcode.V128_F64x2_ADD)] = s7.v128_f64x2_add;
-    vm.dispatch[@intFromEnum(Opcode.V128_F64x2_SUB)] = s7.v128_f64x2_sub;
-    vm.dispatch[@intFromEnum(Opcode.V128_F64x2_MUL)] = s7.v128_f64x2_mul;
-    vm.dispatch[@intFromEnum(Opcode.V128_F64x2_DIV)] = s7.v128_f64x2_div;
-    vm.dispatch[@intFromEnum(Opcode.V128_F64x2_SQRT)] = s7.v128_f64x2_sqrt;
-    vm.dispatch[@intFromEnum(Opcode.V128_SPLAT_F64)] = s7.v128_splat_f64;
+    const vd = @import("handlers/v_dynamic.zig");
+    vm.dispatch[@intFromEnum(Opcode.V_LOAD)] = vd.v_load;
+    vm.dispatch[@intFromEnum(Opcode.V_STORE)] = vd.v_store;
+    vm.dispatch[@intFromEnum(Opcode.V_ADD)] = vd.v_add;
+    vm.dispatch[@intFromEnum(Opcode.V_SUB)] = vd.v_sub;
+    vm.dispatch[@intFromEnum(Opcode.V_MUL)] = vd.v_mul;
+    vm.dispatch[@intFromEnum(Opcode.V_AND)] = vd.v_and;
+    vm.dispatch[@intFromEnum(Opcode.V_OR)] = vd.v_or;
+    vm.dispatch[@intFromEnum(Opcode.V_XOR)] = vd.v_xor;
+    vm.dispatch[@intFromEnum(Opcode.V_FADD)] = vd.v_fadd;
+    vm.dispatch[@intFromEnum(Opcode.V_FSUB)] = vd.v_fsub;
+    vm.dispatch[@intFromEnum(Opcode.V_FMUL)] = vd.v_fmul;
+    vm.dispatch[@intFromEnum(Opcode.V_FDIV)] = vd.v_fdiv;
+    vm.dispatch[@intFromEnum(Opcode.V_FSQRT)] = vd.v_fsqrt;
+    vm.dispatch[@intFromEnum(Opcode.V_SPLAT)] = vd.v_splat;
+    vm.dispatch[@intFromEnum(Opcode.V_SHUFFLE)] = vd.v_shuffle;
 
     //=============================
     // Atomics
@@ -265,44 +270,6 @@ pub fn init(host: ZeusVM.bootstrap.Host, memory: []u8) VM {
     vm.dispatch[@intFromEnum(Opcode.DL_SYM)] = s7.dl_sym;
     vm.dispatch[@intFromEnum(Opcode.DL_CALL)] = s7.dl_call;
     vm.dispatch[@intFromEnum(Opcode.DL_CLOSE)] = s7.dl_close;
-
-    //=============================
-    // V512 Vectors
-    //=============================
-    vm.dispatch[@intFromEnum(Opcode.V512_LOAD)] = s11.v512_load;
-    vm.dispatch[@intFromEnum(Opcode.V512_STORE)] = s11.v512_store;
-    vm.dispatch[@intFromEnum(Opcode.V512_ADD)] = s11.v512_add;
-    vm.dispatch[@intFromEnum(Opcode.V512_SUB)] = s11.v512_sub;
-    vm.dispatch[@intFromEnum(Opcode.V512_MUL)] = s11.v512_mul;
-    vm.dispatch[@intFromEnum(Opcode.V512_AND)] = s11.v512_and;
-    vm.dispatch[@intFromEnum(Opcode.V512_OR)] = s11.v512_or;
-    vm.dispatch[@intFromEnum(Opcode.V512_XOR)] = s11.v512_xor;
-    vm.dispatch[@intFromEnum(Opcode.V512_F64x8_ADD)] = s11.v512_f64x8_add;
-    vm.dispatch[@intFromEnum(Opcode.V512_F64x8_SUB)] = s11.v512_f64x8_sub;
-    vm.dispatch[@intFromEnum(Opcode.V512_F64x8_MUL)] = s11.v512_f64x8_mul;
-    vm.dispatch[@intFromEnum(Opcode.V512_F64x8_DIV)] = s11.v512_f64x8_div;
-    vm.dispatch[@intFromEnum(Opcode.V512_F64x8_SQRT)] = s11.v512_f64x8_sqrt;
-    vm.dispatch[@intFromEnum(Opcode.V512_SPLAT_F64)] = s11.v512_splat_f64;
-    vm.dispatch[@intFromEnum(Opcode.V512_SHUFFLE)] = s11.v512_shuffle;
-
-    //=============================
-    // V2048 Vectors
-    //=============================
-    vm.dispatch[@intFromEnum(Opcode.V2048_LOAD)] = s11.v2048_load;
-    vm.dispatch[@intFromEnum(Opcode.V2048_STORE)] = s11.v2048_store;
-    vm.dispatch[@intFromEnum(Opcode.V2048_ADD)] = s11.v2048_add;
-    vm.dispatch[@intFromEnum(Opcode.V2048_SUB)] = s11.v2048_sub;
-    vm.dispatch[@intFromEnum(Opcode.V2048_MUL)] = s11.v2048_mul;
-    vm.dispatch[@intFromEnum(Opcode.V2048_AND)] = s11.v2048_and;
-    vm.dispatch[@intFromEnum(Opcode.V2048_OR)] = s11.v2048_or;
-    vm.dispatch[@intFromEnum(Opcode.V2048_XOR)] = s11.v2048_xor;
-    vm.dispatch[@intFromEnum(Opcode.V2048_F64x32_ADD)] = s11.v2048_f64x32_add;
-    vm.dispatch[@intFromEnum(Opcode.V2048_F64x32_SUB)] = s11.v2048_f64x32_sub;
-    vm.dispatch[@intFromEnum(Opcode.V2048_F64x32_MUL)] = s11.v2048_f64x32_mul;
-    vm.dispatch[@intFromEnum(Opcode.V2048_F64x32_DIV)] = s11.v2048_f64x32_div;
-    vm.dispatch[@intFromEnum(Opcode.V2048_F64x32_SQRT)] = s11.v2048_f64x32_sqrt;
-    vm.dispatch[@intFromEnum(Opcode.V2048_SPLAT_F64)] = s11.v2048_splat_f64;
-    vm.dispatch[@intFromEnum(Opcode.V2048_SHUFFLE)] = s11.v2048_shuffle;
 
     return vm;
 }

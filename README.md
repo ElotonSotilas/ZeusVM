@@ -10,8 +10,9 @@ ZeusVM is a register-based virtual machine with the following core components:
 - **General Purpose Registers (`R0-R255`)**: 64-bit scalar registers. 
   - `R0` is typically used as a zero-constant in logic, but it is general-purpose (writable).
   - **JIT Mapping**: `R0-R4` are mapped directly to host CPU registers (`rbx`, `r12`, `r13`, `r14`, `r15`) for maximum performance.
-- **Vector Registers (`V0-V255`)**: 128-bit SIMD registers for parallel processing.
-  - **JIT Mapping**: `V0-V3` are mapped to host XMM registers (`xmm0`, `xmm1`, `xmm2`, `xmm3`).
+- **Vector Registers (`V0-V255`)**: Polymorphic dynamic registers for parallel processing.
+  - **Dynamic Sizing**: Registers are dynamically allocated and zero-padded to the nearest power of two.
+  - **JIT Mapping**: Large vectors are processed via high-performance SIMD intrinsics.
 
 ### 2. Memory & Stack
 - **Linear Memory**: A language-agnostic byte array. Size is configurable via CLI (default 1MB).
@@ -152,74 +153,35 @@ All instructions are encoded as 64-bit Big-Endian words: `[Opcode:8][Rd:8][Rs1:8
 | `NET_LISTEN Rd, Rs1, Rs2`| 0x59 | Bind and listen on port `Rs2` (IP `Rs1`), handle in `Rd`. |
 | `NET_ACCEPT Rd, Rs1` | 0x5A | Accept connection from listener `Rs1`, client handle in `Rd`. |
 
-### 9. Vectors
+### 9. Dynamic Vectors
 
-ZeusVM supports SIMD (Single Instruction, Multiple Data) operations across three vector widths.
+ZeusVM supports polymorphic SIMD (Single Instruction, Multiple Data) operations. Vector registers are dynamically sized based on the instruction's length immediate.
 
-#### Register Prefixes
-- `Vn`: 128-bit (16-byte) vector register.
-- `Zn`: 512-bit (64-byte) vector register.
-- `Xn`: 2048-bit (256-byte) vector register.
+#### Register Format
+- `Vn`: A vector register (0-255).
+- `Len`: A 32-bit immediate specifying the number of bytes to operate on.
 
 > [!NOTE]
-> There are 256 registers available for each width. Indexing `V0`, `Z0`, and `X0` refers to the same register index in their respective width banks.
+> The VM automatically pads vector memory to the nearest power of two for optimal cache alignment and SIMD performance.
 
-#### 128-bit (V128)
+#### Vector Instructions
 | Mnemonic | Opcode | Description |
-| --- | --- | --- |
-| `V128_LOAD Vd, Rs1` | 0x60 | Load 16 bytes from `mem[Rs1]` into `Vd`. |
-| `V128_STORE Vd, Rs1` | 0x61 | Store 16 bytes from `Vd` into `mem[Rs1]`. |
-| `V128_ADD Vd, Va, Vb` | 0x62 | Parallel 8-bit integer addition. |
-| `V128_SUB Vd, Va, Vb` | 0x63 | Parallel 8-bit integer subtraction. |
-| `V128_MUL Vd, Va, Vb` | 0x64 | Parallel 8-bit integer multiplication. |
-| `V128_AND Vd, Va, Vb` | 0x65 | Parallel 128-bit bitwise AND. |
-| `V128_OR Vd, Va, Vb` | 0x66 | Parallel 128-bit bitwise OR. |
-| `V128_XOR Vd, Va, Vb` | 0x67 | Parallel 128-bit bitwise XOR. |
-| `V128_SHUFFLE Vd, Va, Vb`| 0x68 | Shuffle bytes based on mask (implementation dependent). |
-| `V128_F64x2_ADD Vd, Va, Vb` | 0x69 | Parallel F64 addition. |
-| `V128_F64x2_SUB Vd, Va, Vb` | 0x6A | Parallel F64 subtraction. |
-| `V128_F64x2_MUL Vd, Va, Vb` | 0x6B | Parallel F64 multiplication. |
-| `V128_F64x2_DIV Vd, Va, Vb` | 0x6C | Parallel F64 division. |
-| `V128_F64x2_SQRT Vd, Va` | 0x6D | Parallel F64 square root. |
-| `V128_SPLAT_F64 Vd, Rs1` | 0x6E | Broadcast F64 from scalar `Rs1` to both lanes of `Vd`. |
-
-#### 512-bit (V512)
-| Mnemonic | Opcode | Description |
-| --- | --- | --- |
-| `V512_LOAD Zd, Rs1` | 0xC0 | Load 64 bytes from memory into `Zd`. |
-| `V512_STORE Zd, Rs1` | 0xC1 | Store 64 bytes from `Zd` into memory. |
-| `V512_ADD Zd, Za, Zb` | 0xC2 | Parallel 8-bit integer addition. |
-| `V512_SUB Zd, Za, Zb` | 0xC3 | Parallel 8-bit integer subtraction. |
-| `V512_MUL Zd, Za, Zb` | 0xC4 | Parallel 8-bit integer multiplication. |
-| `V512_AND Zd, Za, Zb` | 0xC5 | Bitwise AND. |
-| `V512_OR Zd, Za, Zb` | 0xC6 | Bitwise OR. |
-| `V512_XOR Zd, Za, Zb` | 0xC7 | Bitwise XOR. |
-| `V512_SHUFFLE Zd, Za, Zb`| 0xCE | Shuffle Zd based on Za and Zb (XOR placeholder). |
-| `V512_F64x8_ADD Zd, Za, Zb` | 0xC8 | Parallel F64 addition. |
-| `V512_F64x8_SUB Zd, Za, Zb` | 0xC9 | Parallel F64 subtraction. |
-| `V512_F64x8_MUL Zd, Za, Zb` | 0xCA | Parallel F64 multiplication. |
-| `V512_F64x8_DIV Zd, Za, Zb` | 0xCB | Parallel F64 division. |
-| `V512_F64x8_SQRT Zd, Za` | 0xCC | Parallel F64 square root. |
-| `V512_SPLAT_F64 Zd, Rs1` | 0xCD | Broadcast F64 from scalar `Rs1` to all 8 lanes of `Zd`. |
-
-#### 2048-bit (V2048)
-| Mnemonic | Opcode | Description |
-| --- | --- | --- |
-| `V2048_LOAD Xd, Rs1` | 0xE0 | Load 256 bytes from memory into `Xd`. |
-| `V2048_STORE Xd, Rs1` | 0xE1 | Store 256 bytes from `Xd` into memory. |
-| `V2048_ADD Xd, Xa, Xb` | 0xE2 | Parallel 8-bit integer addition. |
-| `V2048_SUB Xd, Xa, Xb` | 0xE3 | Parallel 8-bit integer subtraction. |
-| `V2048_MUL Xd, Xa, Xb` | 0xE4 | Parallel 8-bit integer multiplication. |
-| `V2048_AND Xd, Xa, Xb` | 0xE5 | Bitwise AND. |
-| `V2048_OR Xd, Xa, Xb` | 0xE6 | Bitwise OR. |
-| `V2048_XOR Xd, Xa, Xb` | 0xE7 | Bitwise XOR. |
-| `V2048_SHUFFLE Xd, Xa, Xb`| 0xEE | Shuffle Xd based on Xa and Xb (XOR placeholder). |
-| `V2048_F64x32_ADD Xd, Xa, Xb` | 0xE8 | Parallel F64 addition. |
-| `V2048_F64x32_SUB Xd, Xa, Xb` | 0xE9 | Parallel F64 subtraction. |
-| `V2048_F64x32_MUL Xd, Xa, Xb` | 0xEA | Parallel F64 multiplication. |
-| `V2048_F64x32_DIV Xd, Xa, Xb` | 0xEB | Parallel F64 division. |
-| `V2048_F64x32_SQRT Xd, Xa` | 0xEC | Parallel F64 square root. |
-| `V2048_SPLAT_F64 Xd, Rs1` | 0xED | Broadcast F64 from scalar `Rs1` to all 32 lanes of `Xd`. |
+| :--- | :--- | :--- |
+| `V_LOAD Vd, Rs1, Len` | 0x60 | Load `Len` bytes from `mem[Rs1]` into `Vd`. |
+| `V_STORE Vd, Rs1, Len` | 0x61 | Store `Len` bytes from `Vd` into `mem[Rs1]`. |
+| `V_ADD Vd, Va, Vb, Len` | 0x62 | Parallel 8-bit integer addition. |
+| `V_SUB Vd, Va, Vb, Len` | 0x63 | Parallel 8-bit integer subtraction. |
+| `V_MUL Vd, Va, Vb, Len` | 0x64 | Parallel 8-bit integer multiplication. |
+| `V_AND Vd, Va, Vb, Len` | 0x65 | Bitwise AND. |
+| `V_OR  Vd, Va, Vb, Len` | 0x66 | Bitwise OR. |
+| `V_XOR Vd, Va, Vb, Len` | 0x67 | Bitwise XOR. |
+| `V_FADD Vd, Va, Vb, Len` | 0x69 | Parallel F64 addition. |
+| `V_FSUB Vd, Va, Vb, Len` | 0x6A | Parallel F64 subtraction. |
+| `V_FMUL Vd, Va, Vb, Len` | 0x6B | Parallel F64 multiplication. |
+| `V_FDIV Vd, Va, Vb, Len` | 0x6C | Parallel F64 division. |
+| `V_FSQRT Vd, Va, Len` | 0x6D | Parallel F64 square root. |
+| `V_SPLAT Vd, Rs1, Len` | 0x6E | Broadcast 64-bit value from `Rs1` to all 8-byte lanes in `Len`. |
+| `V_SHUFFLE Vd, Va, Vb, Len`| 0x68 | Shuffle bytes (Implementation specific). |
 
 ### 10. Atomic Operations (SEQ_CST)
 All atomic operations require **8-byte alignment**.
