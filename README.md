@@ -183,6 +183,13 @@ ZeusVM supports polymorphic SIMD (Single Instruction, Multiple Data) operations.
 | `V_FSQRT Vd, Va, Len` | 0x6D | Parallel F64 square root. |
 | `V_SPLAT Vd, Rs1, Len` | 0x6E | Broadcast 64-bit value from `Rs1` to all 8-byte lanes in `Len`. |
 | `V_SHUFFLE Vd, Va, Vb, Len`| 0x68 | Shuffle bytes (Implementation specific). |
+| `V_IADDS Vd, Va, Rs, Len` | 0xC0 | Parallel 8-bit addition with scalar `Rs`. |
+| `V_ISUBS Vd, Va, Rs, Len` | 0xC1 | Parallel 8-bit subtraction with scalar `Rs`. |
+| `V_IMULS Vd, Va, Rs, Len` | 0xC2 | Parallel 8-bit multiplication with scalar `Rs`. |
+| `V_FADDS Vd, Va, Rs, Len` | 0xC3 | Parallel F64 addition with scalar `Rs`. |
+| `V_FSUBS Vd, Va, Rs, Len` | 0xC4 | Parallel F64 subtraction with scalar `Rs`. |
+| `V_FMULS Vd, Va, Rs, Len` | 0xC5 | Parallel F64 multiplication with scalar `Rs`. |
+| `V_FDIVS Vd, Va, Rs, Len` | 0xC6 | Parallel F64 division with scalar `Rs`. |
 
 ### 10. Atomic Operations (SEQ_CST)
 All atomic operations require **8-byte alignment**.

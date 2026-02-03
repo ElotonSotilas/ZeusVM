@@ -109,4 +109,15 @@ pub const Opcode = enum(u8) {
     DL_SYM,
     DL_CALL,
     DL_CLOSE,
+
+    //=============================
+    // Vector-Scalar Operations
+    //=============================
+    V_IADDS = 0xC0,
+    V_ISUBS,
+    V_IMULS,
+    V_FADDS,
+    V_FSUBS,
+    V_FMULS,
+    V_FDIVS,
 };

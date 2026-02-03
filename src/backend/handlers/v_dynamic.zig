@@ -190,6 +190,63 @@ pub fn v_xor(vm: *VM, inst: u64) !void {
     }
 }
 
+pub fn v_iadds(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const v_idx = rs1(inst);
+    const s_idx = rs2(inst);
+    const len = v_len(inst);
+
+    const v = vm.vregs[v_idx];
+    const s: u8 = @intCast(vm.regs[s_idx] & 0xFF);
+    if (v.len < len) return error.VectorTooSmall;
+
+    const res = try ensureCapacity(vm, rd_idx, len);
+    var i: usize = 0;
+    const vs: @Vector(32, u8) = @splat(s);
+    while (i < len) : (i += 32) {
+        const va: @Vector(32, u8) = v[i..][0..32].*;
+        res[i..][0..32].* = va +% vs;
+    }
+}
+
+pub fn v_isubs(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const v_idx = rs1(inst);
+    const s_idx = rs2(inst);
+    const len = v_len(inst);
+
+    const v = vm.vregs[v_idx];
+    const s: u8 = @intCast(vm.regs[s_idx] & 0xFF);
+    if (v.len < len) return error.VectorTooSmall;
+
+    const res = try ensureCapacity(vm, rd_idx, len);
+    var i: usize = 0;
+    const vs: @Vector(32, u8) = @splat(s);
+    while (i < len) : (i += 32) {
+        const va: @Vector(32, u8) = v[i..][0..32].*;
+        res[i..][0..32].* = va -% vs;
+    }
+}
+
+pub fn v_imuls(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const v_idx = rs1(inst);
+    const s_idx = rs2(inst);
+    const len = v_len(inst);
+
+    const v = vm.vregs[v_idx];
+    const s: u8 = @intCast(vm.regs[s_idx] & 0xFF);
+    if (v.len < len) return error.VectorTooSmall;
+
+    const res = try ensureCapacity(vm, rd_idx, len);
+    var i: usize = 0;
+    const vs: @Vector(32, u8) = @splat(s);
+    while (i < len) : (i += 32) {
+        const va: @Vector(32, u8) = v[i..][0..32].*;
+        res[i..][0..32].* = va *% vs;
+    }
+}
+
 pub fn v_fadd(vm: *VM, inst: u64) !void {
     const rd_idx = rd(inst);
     const a_idx = rs1(inst);
@@ -365,6 +422,122 @@ pub fn v_splat(vm: *VM, inst: u64) !void {
     while (i < float_count) : (i += 4) {
         const v: @Vector(4, u64) = @splat(val_be);
         res[i * 8 ..][0..32].* = @bitCast(v);
+    }
+}
+
+pub fn v_fadds(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const v_idx = rs1(inst);
+    const s_idx = rs2(inst);
+    const len = v_len(inst);
+    const float_count = len / 8;
+    const s: f64 = @bitCast(vm.regs[s_idx]);
+
+    const v = vm.vregs[v_idx];
+    if (v.len < len) return error.VectorTooSmall;
+
+    const res = try ensureCapacity(vm, rd_idx, len);
+    var i: usize = 0;
+    while (i < float_count) : (i += 4) {
+        const va: @Vector(4, f64) = .{
+            @bitCast(std.mem.readInt(u64, v[(i + 0) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 1) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 2) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 3) * 8 ..][0..8], .big)),
+        };
+        const vs: @Vector(4, f64) = @splat(s);
+        const vr = va + vs;
+        std.mem.writeInt(u64, res[(i + 0) * 8 ..][0..8], @bitCast(vr[0]), .big);
+        std.mem.writeInt(u64, res[(i + 1) * 8 ..][0..8], @bitCast(vr[1]), .big);
+        std.mem.writeInt(u64, res[(i + 2) * 8 ..][0..8], @bitCast(vr[2]), .big);
+        std.mem.writeInt(u64, res[(i + 3) * 8 ..][0..8], @bitCast(vr[3]), .big);
+    }
+}
+
+pub fn v_fsubs(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const v_idx = rs1(inst);
+    const s_idx = rs2(inst);
+    const len = v_len(inst);
+    const float_count = len / 8;
+    const s: f64 = @bitCast(vm.regs[s_idx]);
+
+    const v = vm.vregs[v_idx];
+    if (v.len < len) return error.VectorTooSmall;
+
+    const res = try ensureCapacity(vm, rd_idx, len);
+    var i: usize = 0;
+    while (i < float_count) : (i += 4) {
+        const va: @Vector(4, f64) = .{
+            @bitCast(std.mem.readInt(u64, v[(i + 0) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 1) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 2) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 3) * 8 ..][0..8], .big)),
+        };
+        const vs: @Vector(4, f64) = @splat(s);
+        const vr = va - vs;
+        std.mem.writeInt(u64, res[(i + 0) * 8 ..][0..8], @bitCast(vr[0]), .big);
+        std.mem.writeInt(u64, res[(i + 1) * 8 ..][0..8], @bitCast(vr[1]), .big);
+        std.mem.writeInt(u64, res[(i + 2) * 8 ..][0..8], @bitCast(vr[2]), .big);
+        std.mem.writeInt(u64, res[(i + 3) * 8 ..][0..8], @bitCast(vr[3]), .big);
+    }
+}
+
+pub fn v_fmuls(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const v_idx = rs1(inst);
+    const s_idx = rs2(inst);
+    const len = v_len(inst);
+    const float_count = len / 8;
+    const s: f64 = @bitCast(vm.regs[s_idx]);
+
+    const v = vm.vregs[v_idx];
+    if (v.len < len) return error.VectorTooSmall;
+
+    const res = try ensureCapacity(vm, rd_idx, len);
+    var i: usize = 0;
+    while (i < float_count) : (i += 4) {
+        const va: @Vector(4, f64) = .{
+            @bitCast(std.mem.readInt(u64, v[(i + 0) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 1) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 2) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 3) * 8 ..][0..8], .big)),
+        };
+        const vs: @Vector(4, f64) = @splat(s);
+        const vr = va * vs;
+        std.mem.writeInt(u64, res[(i + 0) * 8 ..][0..8], @bitCast(vr[0]), .big);
+        std.mem.writeInt(u64, res[(i + 1) * 8 ..][0..8], @bitCast(vr[1]), .big);
+        std.mem.writeInt(u64, res[(i + 2) * 8 ..][0..8], @bitCast(vr[2]), .big);
+        std.mem.writeInt(u64, res[(i + 3) * 8 ..][0..8], @bitCast(vr[3]), .big);
+    }
+}
+
+pub fn v_fdivs(vm: *VM, inst: u64) !void {
+    const rd_idx = rd(inst);
+    const v_idx = rs1(inst);
+    const s_idx = rs2(inst);
+    const len = v_len(inst);
+    const float_count = len / 8;
+    const s: f64 = @bitCast(vm.regs[s_idx]);
+
+    const v = vm.vregs[v_idx];
+    if (v.len < len) return error.VectorTooSmall;
+
+    const res = try ensureCapacity(vm, rd_idx, len);
+    var i: usize = 0;
+    while (i < float_count) : (i += 4) {
+        const va: @Vector(4, f64) = .{
+            @bitCast(std.mem.readInt(u64, v[(i + 0) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 1) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 2) * 8 ..][0..8], .big)),
+            @bitCast(std.mem.readInt(u64, v[(i + 3) * 8 ..][0..8], .big)),
+        };
+        const vs: @Vector(4, f64) = @splat(s);
+        const vr = va / vs;
+        std.mem.writeInt(u64, res[(i + 0) * 8 ..][0..8], @bitCast(vr[0]), .big);
+        std.mem.writeInt(u64, res[(i + 1) * 8 ..][0..8], @bitCast(vr[1]), .big);
+        std.mem.writeInt(u64, res[(i + 2) * 8 ..][0..8], @bitCast(vr[2]), .big);
+        std.mem.writeInt(u64, res[(i + 3) * 8 ..][0..8], @bitCast(vr[3]), .big);
     }
 }
 

@@ -234,6 +234,14 @@ pub fn init(host: ZeusVM.bootstrap.Host, memory: []u8) VM {
     vm.dispatch[@intFromEnum(Opcode.V_SPLAT)] = vd.v_splat;
     vm.dispatch[@intFromEnum(Opcode.V_SHUFFLE)] = vd.v_shuffle;
 
+    vm.dispatch[@intFromEnum(Opcode.V_IADDS)] = vd.v_iadds;
+    vm.dispatch[@intFromEnum(Opcode.V_ISUBS)] = vd.v_isubs;
+    vm.dispatch[@intFromEnum(Opcode.V_IMULS)] = vd.v_imuls;
+    vm.dispatch[@intFromEnum(Opcode.V_FADDS)] = vd.v_fadds;
+    vm.dispatch[@intFromEnum(Opcode.V_FSUBS)] = vd.v_fsubs;
+    vm.dispatch[@intFromEnum(Opcode.V_FMULS)] = vd.v_fmuls;
+    vm.dispatch[@intFromEnum(Opcode.V_FDIVS)] = vd.v_fdivs;
+
     //=============================
     // Atomics
     //=============================
