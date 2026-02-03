@@ -89,20 +89,25 @@ pub const Assembler = struct {
                 continue;
             }
 
-            if (std.ascii.isDigit(c) or (c == '-' and i + 1 < self.source.len and std.ascii.isDigit(self.source[i + 1]))) { // Immediate
-                const start = i;
-                i += 1;
-                while (i < self.source.len and (std.ascii.isDigit(self.source[i]) or self.source[i] == '.' or self.source[i] == 'x' or (self.source[i] >= 'a' and self.source[i] <= 'f') or (self.source[i] >= 'A' and self.source[i] <= 'F'))) : (i += 1) {}
-                try self.tokens.append(self.allocator, .{ .tag = .immediate, .loc = .{ .line = line, .col = col, .text = self.source[start..i] } });
-                col += i - start;
-                continue;
-            }
-
             if (c == '@') { // Label Reference
                 const start = i;
                 i += 1;
                 while (i < self.source.len and (std.ascii.isAlphabetic(self.source[i]) or std.ascii.isDigit(self.source[i]) or self.source[i] == '_')) : (i += 1) {}
                 try self.tokens.append(self.allocator, .{ .tag = .label_ref, .loc = .{ .line = line, .col = col, .text = self.source[start..i] } });
+                col += i - start;
+                continue;
+            }
+
+            if (std.ascii.isDigit(c) or (c == '-' and i + 1 < self.source.len and (std.ascii.isDigit(self.source[i + 1]) or self.isSpecialFloat(self.source[i + 1 ..]))) or self.isSpecialFloat(self.source[i..])) { // Immediate
+                const start = i;
+                if (c == '-') i += 1;
+                if (self.isSpecialFloat(self.source[i..])) {
+                    const low = if (self.source.len >= i + 8 and std.ascii.eqlIgnoreCase(self.source[i .. i + 8], "infinity")) self.source[i .. i + 8] else self.source[i .. i + 3];
+                    i += low.len;
+                } else {
+                    while (i < self.source.len and (std.ascii.isDigit(self.source[i]) or self.source[i] == '.' or self.source[i] == 'x' or (self.source[i] >= 'a' and self.source[i] <= 'f') or (self.source[i] >= 'A' and self.source[i] <= 'F'))) : (i += 1) {}
+                }
+                try self.tokens.append(self.allocator, .{ .tag = .immediate, .loc = .{ .line = line, .col = col, .text = self.source[start..i] } });
                 col += i - start;
                 continue;
             }
@@ -461,12 +466,25 @@ pub const Assembler = struct {
     }
 
     fn parseImmediate(self: *const Assembler, text: []const u8) !u64 {
-        _ = self;
         if (text.len > 1 and text[0] == '"') return 0; // Handled in directive
         if (std.mem.startsWith(u8, text, "0x") or std.mem.startsWith(u8, text, "0X")) {
             return try std.fmt.parseInt(u64, text[2..], 16);
         }
+        if (self.isSpecialFloat(text) or (text.len > 0 and text[0] == '-' and self.isSpecialFloat(text[1..]))) {
+            const f = try self.parseF64(text);
+            return @bitCast(f);
+        }
         return try std.fmt.parseInt(u64, text, 10);
+    }
+
+    fn isSpecialFloat(self: *const Assembler, text: []const u8) bool {
+        _ = self;
+        if (text.len >= 3) {
+            const low = if (text.len >= 8 and std.ascii.eqlIgnoreCase(text[0..8], "infinity")) text[0..8] else if (std.ascii.eqlIgnoreCase(text[0..3], "inf")) text[0..3] else if (std.ascii.eqlIgnoreCase(text[0..3], "nan")) text[0..3] else return false;
+            // Ensure it's a full word or followed by something non-alphanumeric
+            if (text.len == low.len or !std.ascii.isAlphanumeric(text[low.len])) return true;
+        }
+        return false;
     }
 
     fn parseF64(self: *const Assembler, text: []const u8) !f64 {

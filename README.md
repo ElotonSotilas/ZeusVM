@@ -28,13 +28,14 @@ Programs are written in Zeus Assembly and assembled into 64-bit Big-Endian instr
 - **Instructions**: `MNEMONIC [Rd], [Rs1], [Rs2], [Immediate]`
 - **Labels**: Defined with `name:` and referenced with `@name`.
 - **Comments**: Start with `;`.
+- **Floating-Point Literals**: Supports `inf`, `infinity`, and `nan` (case-insensitive).
 
 ### Directives
 | Directive | Description |
 | :--- | :--- |
 | `.org <addr>` | Sets the assembly cursor to a specific absolute address. |
 | `.u64 <val>` | Emits a 64-bit unsigned integer (supports hex `0x...`). |
-| `.f64 <val>` | Emits a 64-bit floating-point number. |
+| `.f64 <val>` | Emits a 64-bit floating-point number (supports `inf`, `nan`). |
 | `.string "..."` | Emits a null-terminated string. Supports escapes like `\n`. |
 
 ---
